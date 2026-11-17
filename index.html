@@ -1,0 +1,1850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Willo — Bioluminescent Light Weaver</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #060913;
+            --accent-cyan: #5efce8;
+            --accent-gold: #ffd166;
+            --accent-violet: #9d4edd;
+            --glass-bg: rgba(11, 18, 34, 0.65);
+            --glass-border: rgba(94, 252, 232, 0.25);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-deep);
+            font-family: 'Quicksand', sans-serif;
+            color: #eef6ff;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        /* UI Overlay Layer */
+        #ui-layer {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 18px 24px;
+            z-index: 10;
+        }
+
+        /* Top HUD */
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .hud-top.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .stats-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .stat-pill {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 999px;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .stat-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #8ea8c3;
+            font-weight: 700;
+        }
+
+        .stat-value {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(94, 252, 232, 0.5);
+        }
+
+        .stat-value.gold {
+            color: var(--accent-gold);
+            text-shadow: 0 0 12px rgba(255, 209, 102, 0.6);
+        }
+
+        .controls-group {
+            display: flex;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .icon-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            color: #d8f3ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
+        }
+
+        .icon-btn:hover {
+            transform: translateY(-2px) scale(1.05);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 18px rgba(94, 252, 232, 0.45);
+            color: #ffffff;
+        }
+
+        .icon-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Grove Banner */
+        #grove-banner {
+            position: fixed;
+            top: 22%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.92);
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+            z-index: 15;
+        }
+
+        #grove-banner.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        #grove-banner h2 {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(1.8rem, 4vw, 2.8rem);
+            letter-spacing: 0.18em;
+            color: #ffffff;
+            text-shadow: 0 0 24px rgba(94, 252, 232, 0.8), 0 0 48px rgba(94, 252, 232, 0.4);
+        }
+
+        #grove-banner p {
+            font-size: 0.95rem;
+            color: #a3d5ff;
+            letter-spacing: 0.12em;
+            margin-top: 6px;
+            text-transform: uppercase;
+        }
+
+        /* Center Screens (Title / Victory / Tips) */
+        .center-modal {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+            z-index: 20;
+            background: radial-gradient(circle at center, rgba(10, 20, 38, 0.45) 0%, rgba(4, 7, 15, 0.82) 100%);
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+            pointer-events: auto;
+        }
+
+        .center-modal.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .game-title {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(3.6rem, 10vw, 6.5rem);
+            font-weight: 800;
+            letter-spacing: 0.24em;
+            margin-right: -0.24em;
+            background: linear-gradient(180deg, #ffffff 15%, #7ef9e5 65%, #38b6ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 28px rgba(94, 252, 232, 0.65));
+            animation: floatTitle 4s ease-in-out infinite;
+        }
+
+        @keyframes floatTitle {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .subtitle {
+            font-size: clamp(0.95rem, 2.2vw, 1.15rem);
+            color: #b4d8f8;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            margin-top: 6px;
+            margin-bottom: 32px;
+        }
+
+        .how-to-card {
+            max-width: 520px;
+            width: 100%;
+            background: rgba(12, 22, 42, 0.72);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(94, 252, 232, 0.25);
+            border-radius: 20px;
+            padding: 20px 24px;
+            margin-bottom: 30px;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
+            text-align: left;
+            display: grid;
+            gap: 12px;
+        }
+
+        .tip-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-size: 0.92rem;
+            line-height: 1.4;
+            color: #dceeff;
+        }
+
+        .tip-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            background: rgba(94, 252, 232, 0.14);
+            border: 1px solid rgba(94, 252, 232, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 1.1rem;
+        }
+
+        .play-btn {
+            font-family: 'Cinzel', serif;
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: 0.18em;
+            padding: 16px 46px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            background: linear-gradient(135deg, #2ec4b6 0%, #5efce8 50%, #3a86ff 100%);
+            color: #05101c;
+            cursor: pointer;
+            box-shadow: 0 0 30px rgba(94, 252, 232, 0.55), inset 0 2px 6px rgba(255, 255, 255, 0.7);
+            transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .play-btn:hover {
+            transform: translateY(-3px) scale(1.04);
+            box-shadow: 0 0 45px rgba(94, 252, 232, 0.85), inset 0 2px 8px rgba(255, 255, 255, 0.9);
+        }
+
+        .play-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* Bottom subtle hint */
+        .hud-bottom {
+            text-align: center;
+            font-size: 0.82rem;
+            color: rgba(190, 225, 255, 0.65);
+            letter-spacing: 0.06em;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        @media (max-width: 600px) {
+            #ui-layer {
+                padding: 12px 14px;
+            }
+            .stat-pill {
+                padding: 6px 12px;
+            }
+            .stat-value {
+                font-size: 0.92rem;
+            }
+            .how-to-card {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD Overlay -->
+    <div id="ui-layer">
+        <div class="hud-top" id="hudTop">
+            <div class="stats-group">
+                <div class="stat-pill">
+                    <span class="stat-label">Grove</span>
+                    <span class="stat-value" id="hudGrove">1</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-label">Lanterns</span>
+                    <span class="stat-value" id="hudNodes">0 / 4</span>
+                </div>
+                <div class="stat-pill">
+                    <span class="stat-label">Light</span>
+                    <span class="stat-value gold" id="hudScore">0</span>
+                </div>
+                <div class="stat-pill" id="flowPill">
+                    <span class="stat-label">Flow</span>
+                    <span class="stat-value" id="hudFlow">1.0x</span>
+                </div>
+            </div>
+
+            <div class="controls-group">
+                <button class="icon-btn" id="soundBtn" title="Toggle Sound" aria-label="Toggle Sound">
+                    <!-- Sound On SVG -->
+                    <svg id="iconSoundOn" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                    </svg>
+                    <!-- Sound Off SVG -->
+                    <svg id="iconSoundOff" style="display:none;" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <line x1="23" y1="9" x2="17" y2="15"></line>
+                        <line x1="17" y1="9" x2="23" y2="15"></line>
+                    </svg>
+                </button>
+                <button class="icon-btn" id="restartBtn" title="Restart Grove" aria-label="Restart Grove">
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="hud-bottom" id="hudHint">
+            Move cursor or WASD/Arrows to glide • Hold Click / Touch / Space near a Lantern to Tether & Slingshot
+        </div>
+    </div>
+
+    <!-- Grove Transition Banner -->
+    <div id="grove-banner">
+        <h2 id="bannerTitle">GROVE I</h2>
+        <p id="bannerSub">The Whispering Glade</p>
+    </div>
+
+    <!-- Title / Start Overlay -->
+    <div class="center-modal" id="startModal">
+        <h1 class="game-title">WILLO</h1>
+        <p class="subtitle">Weave Light Through The Twilight Forest</p>
+
+        <div class="how-to-card">
+            <div class="tip-row">
+                <div class="tip-icon">✨</div>
+                <div><strong>Glide & Tether:</strong> Guide Willo with your pointer or WASD/Arrows. <strong>Hold Click, Touch, or Space</strong> near a floating Lantern Node to cast a beam of light and orbit around it.</div>
+            </div>
+            <div class="tip-row">
+                <div class="tip-icon">⚡</div>
+                <div><strong>Slingshot Launch:</strong> Build rotational speed while orbiting, then <strong>release</strong> to slingshot forward and awaken the Lantern.</div>
+            </div>
+            <div class="tip-row">
+                <div class="tip-icon">🔮</div>
+                <div><strong>Banish Shadows:</strong> Weave a closed loop of your glowing trail around dark Shadow Wisps—or connect charged Lanterns—to shatter them into starlight!</div>
+            </div>
+        </div>
+
+        <button class="play-btn" id="playBtn">ENTER GROVE</button>
+    </div>
+
+    <script>
+        /**
+         * WILLO — Bioluminescent Light Weaver
+         * Single-file HTML5 Canvas Game with Procedural Web Audio & Physics
+         */
+
+        // ==========================================
+        // 1. PROCEDURAL HARMONIC SOUND ENGINE
+        // ==========================================
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+                // Pentatonic celestial scale frequencies (F# Major Pentatonic / Lydian dreamscape)
+                this.scale = [277.18, 311.13, 369.99, 415.30, 466.16, 554.37, 622.25, 739.99, 830.61, 932.33, 1108.73];
+                this.noteIndex = 0;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) {
+                        this.ctx = new AudioCtx();
+                    }
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            toggle() {
+                this.enabled = !this.enabled;
+                return this.enabled;
+            }
+
+            playTetherCast() {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(320, now);
+                osc.frequency.exponentialRampToValueAtTime(640, now + 0.16);
+
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(0.11, now + 0.03);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.24);
+            }
+
+            playNodeAwaken(combo = 1) {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const freq = this.scale[this.noteIndex % this.scale.length];
+                this.noteIndex++;
+
+                // Main bell harmonic
+                const osc = this.ctx.createOscillator();
+                const osc2 = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc2.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now);
+                osc2.frequency.setValueAtTime(freq * 2, now);
+
+                const vol = Math.min(0.18, 0.1 + combo * 0.012);
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(vol, now + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.1);
+
+                osc.connect(gain);
+                osc2.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                osc2.start(now);
+                osc.stop(now + 1.15);
+                osc2.stop(now + 1.15);
+            }
+
+            playSlingshot(speedRatio = 1) {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                const startFreq = 260 + speedRatio * 180;
+                osc.frequency.setValueAtTime(startFreq, now);
+                osc.frequency.exponentialRampToValueAtTime(startFreq * 1.65, now + 0.25);
+
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(0.12, now + 0.04);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.35);
+            }
+
+            playBanishShadow() {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                // Shimmering chord arpeggio
+                [554.37, 659.25, 830.61, 1108.73].forEach((f, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(f, now + idx * 0.045);
+                    gain.gain.setValueAtTime(0.001, now + idx * 0.045);
+                    gain.gain.linearRampToValueAtTime(0.09, now + idx * 0.045 + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.045 + 0.7);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.045);
+                    osc.stop(now + idx * 0.045 + 0.75);
+                });
+            }
+
+            playShadowHit() {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(145, now);
+                osc.frequency.exponentialRampToValueAtTime(58, now + 0.35);
+
+                gain.gain.setValueAtTime(0.11, now);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.38);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            }
+
+            playGroveClear() {
+                if (!this.enabled || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                this.noteIndex = 0;
+                const chord = [277.18, 369.99, 415.30, 554.37, 739.99];
+                chord.forEach((f, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(f, now + i * 0.08);
+                    gain.gain.setValueAtTime(0.001, now + i * 0.08);
+                    gain.gain.linearRampToValueAtTime(0.1, now + i * 0.08 + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.08 + 1.6);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + i * 0.08);
+                    osc.stop(now + i * 0.08 + 1.65);
+                });
+            }
+        }
+
+        // ==========================================
+        // 2. UTILITY & GEOMETRY HELPERS
+        // ==========================================
+        const MathUtil = {
+            dist: (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1),
+            lerp: (a, b, t) => a + (b - a) * t,
+            clamp: (v, min, max) => Math.max(min, Math.min(max, v)),
+            rand: (min, max) => Math.random() * (max - min) + min,
+            // Ray-casting point-in-polygon check for Light Weaving loop capture
+            pointInPolygon: (px, py, polygon) => {
+                let inside = false;
+                for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+                    const xi = polygon[i].x, yi = polygon[i].y;
+                    const xj = polygon[j].x, yj = polygon[j].y;
+                    const intersect = ((yi > py) !== (yj > py)) &&
+                        (px < (xj - xi) * (py - yi) / ((yj - yi) || 0.00001) + xi);
+                    if (intersect) inside = !inside;
+                }
+                return inside;
+            },
+            // Line segment intersection check to detect when Willo's ribbon closes a loop
+            segmentsIntersect: (p1, p2, p3, p4) => {
+                const ccw = (A, B, C) => (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+                return (ccw(p1, p3, p4) !== ccw(p2, p3, p4)) && (ccw(p1, p2, p3) !== ccw(p1, p2, p4));
+            }
+        };
+
+        // ==========================================
+        // 3. GAME ENTITIES & VISUAL EFFECTS
+        // ==========================================
+        class Particle {
+            constructor(x, y, vx, vy, color, size, life, drag = 0.96) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.color = color;
+                this.size = size;
+                this.life = life;
+                this.maxLife = life;
+                this.drag = drag;
+            }
+            update(dt) {
+                this.x += this.vx * dt;
+                this.y += this.vy * dt;
+                this.vx *= Math.pow(this.drag, dt * 60);
+                this.vy *= Math.pow(this.drag, dt * 60);
+                this.life -= dt;
+            }
+            draw(ctx) {
+                const alpha = Math.max(0, this.life / this.maxLife);
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size * (0.4 + 0.6 * alpha), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Shockwave {
+            constructor(x, y, maxRadius, color, speed = 280) {
+                this.x = x;
+                this.y = y;
+                this.radius = 8;
+                this.maxRadius = maxRadius;
+                this.color = color;
+                this.speed = speed;
+                this.alpha = 0.9;
+            }
+            update(dt) {
+                this.radius += this.speed * dt;
+                this.alpha = Math.max(0, 1 - (this.radius / this.maxRadius));
+            }
+            draw(ctx) {
+                if (this.alpha <= 0) return;
+                ctx.save();
+                ctx.strokeStyle = this.color;
+                ctx.globalAlpha = this.alpha * 0.75;
+                ctx.lineWidth = 2.5 * this.alpha + 0.5;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        class FloatingText {
+            constructor(x, y, text, color = '#5efce8') {
+                this.x = x;
+                this.y = y;
+                this.text = text;
+                this.color = color;
+                this.life = 1.25;
+                this.maxLife = 1.25;
+            }
+            update(dt) {
+                this.y -= 34 * dt;
+                this.life -= dt;
+            }
+            draw(ctx) {
+                const alpha = Math.max(0, Math.min(1, (this.life / this.maxLife) * 1.4));
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.font = '700 16px "Quicksand", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 10;
+                ctx.fillText(this.text, this.x, this.y);
+                ctx.restore();
+            }
+        }
+
+        class LanternNode {
+            constructor(x, y, type = 'normal') {
+                this.x = x;
+                this.y = y;
+                this.baseX = x;
+                this.baseY = y;
+                this.type = type; // 'normal', 'crystal' (shatters after launch), 'drift' (moves gently)
+                this.radius = 18;
+                this.tetherRange = 175;
+                this.charge = 0; // 0 to 1
+                this.awakened = false;
+                this.shattered = false;
+                this.pulsePhase = Math.random() * Math.PI * 2;
+                this.orbitAngle = Math.random() * Math.PI * 2;
+                this.driftSpeed = MathUtil.rand(0.5, 1.1);
+                this.driftAmp = type === 'drift' ? MathUtil.rand(28, 55) : 6;
+            }
+
+            update(dt, time) {
+                if (this.shattered) return;
+                this.pulsePhase += dt * 2.6;
+                this.orbitAngle += dt * (this.awakened ? 1.8 : 0.7);
+                this.x = this.baseX + Math.cos(time * this.driftSpeed + this.pulsePhase * 0.3) * this.driftAmp;
+                this.y = this.baseY + Math.sin(time * this.driftSpeed * 0.85 + this.pulsePhase * 0.3) * (this.driftAmp * 0.75);
+            }
+
+            draw(ctx, isTethered, isCandidate) {
+                if (this.shattered) return;
+
+                const pulse = Math.sin(this.pulsePhase) * 0.15 + 1;
+                const primaryColor = this.type === 'crystal'
+                    ? (this.awakened ? '#ff9ebb' : '#c77dff')
+                    : (this.awakened ? '#ffd166' : '#5efce8');
+
+                ctx.save();
+
+                // Subtle tether range ring when candidate or tethered
+                if (isCandidate || isTethered) {
+                    ctx.strokeStyle = isTethered ? 'rgba(255, 209, 102, 0.35)' : 'rgba(94, 252, 232, 0.22)';
+                    ctx.lineWidth = isTethered ? 2 : 1.2;
+                    ctx.setLineDash([6, 8]);
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.tetherRange, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                // Outer ambient glow
+                const glowRadius = (this.awakened ? 68 : 42) * pulse;
+                const grad = ctx.createRadialGradient(this.x, this.y, 2, this.x, this.y, glowRadius);
+                grad.addColorStop(0, this.awakened ? 'rgba(255, 209, 102, 0.48)' : 'rgba(94, 252, 232, 0.25)');
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, glowRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Charge progress arc
+                if (this.charge > 0 && !this.awakened) {
+                    ctx.strokeStyle = '#ffd166';
+                    ctx.lineWidth = 3.5;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius + 9, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * this.charge);
+                    ctx.stroke();
+                }
+
+                // Rotating rune ring
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.orbitAngle);
+                ctx.strokeStyle = primaryColor;
+                ctx.lineWidth = this.awakened ? 2.2 : 1.5;
+
+                if (this.type === 'crystal') {
+                    // Diamond rune shape for fragile crystal nodes
+                    ctx.beginPath();
+                    const r = this.radius + 4;
+                    ctx.moveTo(0, -r);
+                    ctx.lineTo(r, 0);
+                    ctx.lineTo(0, r);
+                    ctx.lineTo(-r, 0);
+                    ctx.closePath();
+                    ctx.stroke();
+                } else {
+                    // Ancient circular rune segments
+                    for (let i = 0; i < 3; i++) {
+                        const start = (i * Math.PI * 2) / 3;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, this.radius + 5, start, start + Math.PI * 0.42);
+                        ctx.stroke();
+                    }
+                }
+
+                // Core seed pod
+                ctx.fillStyle = this.awakened ? '#fff8e7' : '#132a46';
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius * 0.72, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = primaryColor;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Inner core spark
+                ctx.fillStyle = primaryColor;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.awakened ? 6 : 3.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class ShadowWisp {
+            constructor(x, y, patrolRadius = 70) {
+                this.x = x;
+                this.y = y;
+                this.anchorX = x;
+                this.anchorY = y;
+                this.patrolRadius = patrolRadius;
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = MathUtil.rand(0.7, 1.35);
+                this.radius = 19;
+                this.banished = false;
+                this.tendrils = Array.from({ length: 6 }, (_, i) => ({
+                    angle: (i / 6) * Math.PI * 2,
+                    len: MathUtil.rand(14, 24),
+                    phase: Math.random() * Math.PI * 2
+                }));
+            }
+
+            update(dt, willo) {
+                if (this.banished) return;
+                this.angle += this.speed * dt;
+                const targetX = this.anchorX + Math.cos(this.angle) * this.patrolRadius;
+                const targetY = this.anchorY + Math.sin(this.angle * 0.8) * (this.patrolRadius * 0.65);
+
+                // Subtle attraction if Willo gets very close
+                const d = MathUtil.dist(this.x, this.y, willo.x, willo.y);
+                if (d < 160) {
+                    const pull = (1 - d / 160) * 45;
+                    const angToWillo = Math.atan2(willo.y - this.y, willo.x - this.x);
+                    this.x += (targetX - this.x) * 2 * dt + Math.cos(angToWillo) * pull * dt;
+                    this.y += (targetY - this.y) * 2 * dt + Math.sin(angToWillo) * pull * dt;
+                } else {
+                    this.x += (targetX - this.x) * 2.5 * dt;
+                    this.y += (targetY - this.y) * 2.5 * dt;
+                }
+
+                this.tendrils.forEach(t => {
+                    t.phase += dt * 4.5;
+                });
+            }
+
+            draw(ctx) {
+                if (this.banished) return;
+                ctx.save();
+
+                // Dark aura
+                const grad = ctx.createRadialGradient(this.x, this.y, 4, this.x, this.y, 42);
+                grad.addColorStop(0, 'rgba(38, 12, 66, 0.85)');
+                grad.addColorStop(0.6, 'rgba(88, 24, 124, 0.3)');
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 42, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Swaying shadow tendrils
+                ctx.strokeStyle = '#9d4edd';
+                ctx.lineWidth = 2;
+                this.tendrils.forEach(t => {
+                    const sway = Math.sin(t.phase) * 0.35;
+                    const tx = this.x + Math.cos(t.angle + sway) * t.len;
+                    const ty = this.y + Math.sin(t.angle + sway) * t.len;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y);
+                    ctx.quadraticCurveTo(
+                        this.x + Math.cos(t.angle - sway) * (t.len * 0.5),
+                        this.y + Math.sin(t.angle - sway) * (t.len * 0.5),
+                        tx, ty
+                    );
+                    ctx.stroke();
+                });
+
+                // Shadow core
+                ctx.fillStyle = '#140824';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * 0.72, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#c77dff';
+                ctx.lineWidth = 1.8;
+                ctx.stroke();
+
+                // Glowing violet eye
+                ctx.fillStyle = '#ff4d6d';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class WindCurrent {
+            constructor(x, y, w, h, fx, fy) {
+                this.x = x;
+                this.y = y;
+                this.w = w;
+                this.h = h;
+                this.fx = fx;
+                this.fy = fy;
+                this.streaks = Array.from({ length: 12 }, () => ({
+                    rx: Math.random(),
+                    ry: Math.random(),
+                    len: MathUtil.rand(25, 65),
+                    speed: MathUtil.rand(0.4, 0.9)
+                }));
+            }
+
+            update(dt) {
+                const mag = Math.hypot(this.fx, this.fy) || 1;
+                const nx = this.fx / mag;
+                const ny = this.fy / mag;
+                this.streaks.forEach(s => {
+                    s.rx += nx * s.speed * dt;
+                    s.ry += ny * s.speed * dt;
+                    if (s.rx > 1) s.rx -= 1;
+                    if (s.rx < 0) s.rx += 1;
+                    if (s.ry > 1) s.ry -= 1;
+                    if (s.ry < 0) s.ry += 1;
+                });
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.strokeStyle = 'rgba(126, 249, 229, 0.14)';
+                ctx.lineWidth = 1.5;
+                const mag = Math.hypot(this.fx, this.fy) || 1;
+                const nx = this.fx / mag;
+                const ny = this.fy / mag;
+
+                this.streaks.forEach(s => {
+                    const sx = this.x + s.rx * this.w;
+                    const sy = this.y + s.ry * this.h;
+                    ctx.beginPath();
+                    ctx.moveTo(sx, sy);
+                    ctx.lineTo(sx + nx * s.len, sy + ny * s.len);
+                    ctx.stroke();
+                });
+                ctx.restore();
+            }
+        }
+
+        // ==========================================
+        // 4. MAIN GAME CONTROLLER
+        // ==========================================
+        class WilloGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.sound = new SoundEngine();
+
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+                // Game State
+                this.state = 'MENU'; // 'MENU', 'PLAYING', 'TRANSITION'
+                this.grove = 1;
+                this.score = 0;
+                this.flow = 1.0;
+                this.time = 0;
+                this.shakeTime = 0;
+                this.shakeIntensity = 0;
+
+                // Willo Spirit State
+                this.willo = {
+                    x: this.width * 0.5,
+                    y: this.height * 0.5,
+                    vx: 0,
+                    vy: 0,
+                    radius: 10,
+                    trail: [], // {x, y, age}
+                    tetheredNode: null,
+                    orbitDir: 1,
+                    orbitRadius: 90,
+                    invulnTimer: 0,
+                    boostTimer: 0
+                };
+
+                // World Entities
+                this.nodes = [];
+                this.shadows = [];
+                this.winds = [];
+                this.particles = [];
+                this.shockwaves = [];
+                this.floatingTexts = [];
+                this.bgFireflies = [];
+                this.trees = [];
+
+                // Input State
+                this.pointer = {
+                    x: this.width * 0.5,
+                    y: this.height * 0.5,
+                    active: false,
+                    down: false
+                };
+                this.keys = {};
+
+                this.initEnvironment();
+                this.bindEvents();
+                this.resize();
+                this.setupDemoScene();
+            }
+
+            initEnvironment() {
+                // Ambient background spores/fireflies
+                this.bgFireflies = Array.from({ length: 55 }, () => ({
+                    x: Math.random() * this.width,
+                    y: Math.random() * this.height,
+                    size: MathUtil.rand(1, 3.2),
+                    vx: MathUtil.rand(-12, 12),
+                    vy: MathUtil.rand(-18, -4),
+                    phase: Math.random() * Math.PI * 2,
+                    color: Math.random() > 0.35 ? '#5efce8' : '#ffd166'
+                }));
+
+                this.generateForestSilhouettes();
+            }
+
+            generateForestSilhouettes() {
+                this.trees = [];
+                const layers = [
+                    { count: 9, color: '#091326', widthMin: 45, widthMax: 95, parallax: 0.15 },
+                    { count: 7, color: '#060c1a', widthMin: 70, widthMax: 140, parallax: 0.35 }
+                ];
+                layers.forEach((layer, lIdx) => {
+                    for (let i = 0; i < layer.count; i++) {
+                        this.trees.push({
+                            x: (i / layer.count) * this.width + MathUtil.rand(-40, 40),
+                            width: MathUtil.rand(layer.widthMin, layer.widthMax),
+                            curve: MathUtil.rand(-45, 45),
+                            color: layer.color,
+                            layer: lIdx,
+                            parallax: layer.parallax,
+                            swayPhase: Math.random() * Math.PI * 2
+                        });
+                    }
+                });
+            }
+
+            resize() {
+                this.width = window.innerWidth;
+                this.height = window.innerHeight;
+                this.canvas.width = this.width * this.dpr;
+                this.canvas.height = this.height * this.dpr;
+                this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+                this.generateForestSilhouettes();
+            }
+
+            bindEvents() {
+                window.addEventListener('resize', () => this.resize());
+
+                // Pointer / Touch Controls
+                const onPointerMove = (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    this.pointer.x = clientX - rect.left;
+                    this.pointer.y = clientY - rect.top;
+                    this.pointer.active = true;
+                };
+
+                const onPointerDown = (e) => {
+                    if (this.state !== 'PLAYING') return;
+                    onPointerMove(e);
+                    this.pointer.down = true;
+                    this.attemptTether();
+                };
+
+                const onPointerUp = () => {
+                    if (this.pointer.down) {
+                        this.pointer.down = false;
+                        this.releaseTether();
+                    }
+                };
+
+                this.canvas.addEventListener('mousemove', onPointerMove);
+                this.canvas.addEventListener('mousedown', onPointerDown);
+                window.addEventListener('mouseup', onPointerUp);
+
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    onPointerDown(e);
+                }, { passive: false });
+                this.canvas.addEventListener('touchmove', (e) => {
+                    e.preventDefault();
+                    onPointerMove(e);
+                }, { passive: false });
+                window.addEventListener('touchend', onPointerUp);
+
+                // Keyboard Controls (WASD / Arrows + Space to Tether)
+                window.addEventListener('keydown', (e) => {
+                    this.keys[e.code] = true;
+                    if (e.code === 'Space' && this.state === 'PLAYING' && !e.repeat) {
+                        e.preventDefault();
+                        this.attemptTether();
+                    }
+                });
+
+                window.addEventListener('keyup', (e) => {
+                    this.keys[e.code] = false;
+                    if (e.code === 'Space' && this.state === 'PLAYING') {
+                        this.releaseTether();
+                    }
+                });
+
+                // UI Buttons
+                document.getElementById('playBtn').addEventListener('click', () => {
+                    this.sound.init();
+                    this.startGame();
+                });
+
+                document.getElementById('soundBtn').addEventListener('click', () => {
+                    this.sound.init();
+                    const isOn = this.sound.toggle();
+                    document.getElementById('iconSoundOn').style.display = isOn ? 'block' : 'none';
+                    document.getElementById('iconSoundOff').style.display = isOn ? 'none' : 'block';
+                });
+
+                document.getElementById('restartBtn').addEventListener('click', () => {
+                    this.sound.init();
+                    this.loadGrove(this.grove);
+                });
+            }
+
+            setupDemoScene() {
+                // Ambient orbiting nodes for the live background behind the title screen
+                this.nodes = [
+                    new LanternNode(this.width * 0.28, this.height * 0.35, 'normal'),
+                    new LanternNode(this.width * 0.72, this.height * 0.38, 'normal'),
+                    new LanternNode(this.width * 0.5, this.height * 0.72, 'normal')
+                ];
+                this.nodes[0].awakened = true;
+                this.willo.x = this.width * 0.5;
+                this.willo.y = this.height * 0.45;
+            }
+
+            startGame() {
+                document.getElementById('startModal').classList.add('hidden');
+                document.getElementById('hudTop').classList.add('visible');
+                this.grove = 1;
+                this.score = 0;
+                this.flow = 1.0;
+                this.state = 'PLAYING';
+                this.loadGrove(1);
+            }
+
+            showGroveBanner(groveNum) {
+                const names = [
+                    'The Whispering Glade',
+                    'Lantern Hollow',
+                    'Veil of Shadow Wisps',
+                    'Zephyr Canopy',
+                    'Crystalline Sanctuary',
+                    'Heart of the Ancient Wood'
+                ];
+                const banner = document.getElementById('grove-banner');
+                document.getElementById('bannerTitle').textContent = `GROVE ${groveNum}`;
+                document.getElementById('bannerSub').textContent = names[(groveNum - 1) % names.length];
+                banner.classList.add('show');
+                setTimeout(() => banner.classList.remove('show'), 2400);
+            }
+
+            loadGrove(groveNum) {
+                this.grove = groveNum;
+                this.nodes = [];
+                this.shadows = [];
+                this.winds = [];
+                this.willo.tetheredNode = null;
+                this.willo.trail = [];
+                this.willo.x = this.width * 0.5;
+                this.willo.y = this.height * 0.52;
+                this.willo.vx = 0;
+                this.willo.vy = 0;
+                this.willo.invulnTimer = 1.2;
+
+                const marginX = Math.max(95, this.width * 0.14);
+                const marginY = Math.max(105, this.height * 0.16);
+                const usableW = this.width - marginX * 2;
+                const usableH = this.height - marginY * 2;
+
+                // Determine node count & types based on Grove progression
+                const nodeCount = Math.min(8, 3 + groveNum);
+                const placed = [];
+
+                for (let i = 0; i < nodeCount; i++) {
+                    let nx, ny, valid = false;
+                    let attempts = 0;
+                    while (!valid && attempts < 60) {
+                        attempts++;
+                        nx = marginX + Math.random() * usableW;
+                        ny = marginY + Math.random() * usableH;
+                        // Keep away from Willo's spawn center and other nodes
+                        const distCenter = MathUtil.dist(nx, ny, this.willo.x, this.willo.y);
+                        const farFromOthers = placed.every(p => MathUtil.dist(nx, ny, p.x, p.y) > 125);
+                        if (distCenter > 110 && farFromOthers) valid = true;
+                    }
+                    let type = 'normal';
+                    if (groveNum >= 2 && i % 3 === 1) type = 'drift';
+                    if (groveNum >= 3 && i === nodeCount - 1) type = 'crystal';
+
+                    const node = new LanternNode(nx, ny, type);
+                    this.nodes.push(node);
+                    placed.push({ x: nx, y: ny });
+                }
+
+                // Spawn Shadow Wisps from Grove 2+ (or 1 gentle shadow in Grove 1 to teach Light Weaving)
+                const shadowCount = groveNum === 1 ? 1 : Math.min(6, groveNum);
+                for (let i = 0; i < shadowCount; i++) {
+                    let sx, sy, valid = false, tries = 0;
+                    while (!valid && tries < 50) {
+                        tries++;
+                        sx = marginX + Math.random() * usableW;
+                        sy = marginY + Math.random() * usableH;
+                        if (MathUtil.dist(sx, sy, this.willo.x, this.willo.y) > 150) valid = true;
+                    }
+                    this.shadows.push(new ShadowWisp(sx, sy, 50 + groveNum * 10));
+                }
+
+                // Spawn Wind Currents in Grove 3+
+                if (groveNum >= 3) {
+                    const isHorizontal = groveNum % 2 === 1;
+                    this.winds.push(new WindCurrent(
+                        this.width * 0.2,
+                        this.height * 0.25,
+                        this.width * 0.6,
+                        this.height * 0.5,
+                        isHorizontal ? 130 : 0,
+                        isHorizontal ? 0 : -120
+                    ));
+                }
+
+                this.shockwaves.push(new Shockwave(this.willo.x, this.willo.y, 260, '#5efce8', 320));
+                this.showGroveBanner(groveNum);
+                this.updateHUD();
+            }
+
+            findNearestTetherCandidate() {
+                let best = null;
+                let bestDist = Infinity;
+                for (const node of this.nodes) {
+                    if (node.shattered) continue;
+                    const d = MathUtil.dist(this.willo.x, this.willo.y, node.x, node.y);
+                    if (d <= node.tetherRange && d < bestDist) {
+                        best = node;
+                        bestDist = d;
+                    }
+                }
+                return best;
+            }
+
+            attemptTether() {
+                if (this.willo.tetheredNode) return;
+                const target = this.findNearestTetherCandidate();
+                if (target) {
+                    this.willo.tetheredNode = target;
+                    const dx = this.willo.x - target.x;
+                    const dy = this.willo.y - target.y;
+                    const dist = Math.max(48, Math.min(target.tetherRange * 0.85, Math.hypot(dx, dy)));
+                    this.willo.orbitRadius = dist;
+
+                    // Determine angular direction based on current velocity cross product
+                    const cross = dx * this.willo.vy - dy * this.willo.vx;
+                    this.willo.orbitDir = cross >= 0 ? 1 : -1;
+
+                    // Give initial tangential impulse if moving slowly
+                    const speed = Math.hypot(this.willo.vx, this.willo.vy);
+                    if (speed < 220) {
+                        const angle = Math.atan2(dy, dx);
+                        const tangentAngle = angle + (Math.PI / 2) * this.willo.orbitDir;
+                        this.willo.vx = Math.cos(tangentAngle) * 260;
+                        this.willo.vy = Math.sin(tangentAngle) * 260;
+                    }
+
+                    this.sound.playTetherCast();
+                    this.spawnBurst(target.x, target.y, '#5efce8', 10, 140);
+                }
+            }
+
+            releaseTether() {
+                const node = this.willo.tetheredNode;
+                if (!node) return;
+
+                // Slingshot boost along current tangent velocity
+                const speed = Math.hypot(this.willo.vx, this.willo.vy);
+                const boostMult = 1.38;
+                const maxLaunchSpeed = 760;
+                const newSpeed = Math.min(maxLaunchSpeed, Math.max(340, speed * boostMult));
+
+                if (speed > 1) {
+                    this.willo.vx = (this.willo.vx / speed) * newSpeed;
+                    this.willo.vy = (this.willo.vy / speed) * newSpeed;
+                }
+
+                this.willo.boostTimer = 0.45;
+                this.sound.playSlingshot(newSpeed / maxLaunchSpeed);
+                this.shockwaves.push(new Shockwave(this.willo.x, this.willo.y, 120, '#ffd166', 360));
+                this.spawnBurst(this.willo.x, this.willo.y, '#ffd166', 16, 220);
+
+                // Fragile crystal nodes shatter into bonus starlight after a slingshot!
+                if (node.type === 'crystal' && node.awakened) {
+                    node.shattered = true;
+                    this.spawnBurst(node.x, node.y, '#ff9ebb', 28, 260);
+                    this.shockwaves.push(new Shockwave(node.x, node.y, 180, '#ff9ebb', 340));
+                    this.addScore(150, node.x, node.y, 'CRYSTAL SHATTER +150');
+                }
+
+                this.willo.tetheredNode = null;
+            }
+
+            awakenNode(node) {
+                if (node.awakened) return;
+                node.awakened = true;
+                node.charge = 1;
+
+                this.flow = Math.min(5.0, +(this.flow + 0.5).toFixed(1));
+                const pts = Math.round(100 * this.flow);
+                this.addScore(pts, node.x, node.y - 24, `+${pts}`);
+
+                this.sound.playNodeAwaken(this.flow);
+                this.shockwaves.push(new Shockwave(node.x, node.y, 230, '#ffd166', 310));
+                this.spawnBurst(node.x, node.y, '#ffd166', 26, 240);
+                this.triggerShake(5, 0.18);
+
+                // Check if awakening this node forms a triangle/polygon with other awakened nodes to banish nearby shadows
+                this.checkLightWeaveCapture();
+                this.updateHUD();
+                this.checkGroveCompletion();
+            }
+
+            checkLightWeaveCapture() {
+                // 1. Check if Willo's recent ribbon trail formed a closed loop around any Shadow Wisp
+                const trail = this.willo.trail;
+                if (trail.length >= 14) {
+                    const headA = trail[trail.length - 1];
+                    const headB = trail[trail.length - 2];
+
+                    for (let i = 0; i < trail.length - 10; i++) {
+                        const segA = trail[i];
+                        const segB = trail[i + 1];
+                        if (MathUtil.segmentsIntersect(headA, headB, segA, segB)) {
+                            const loopPoly = trail.slice(i);
+                            let banishedAny = false;
+                            for (const shadow of this.shadows) {
+                                if (!shadow.banished && MathUtil.pointInPolygon(shadow.x, shadow.y, loopPoly)) {
+                                    this.banishShadow(shadow);
+                                    banishedAny = true;
+                                }
+                            }
+                            if (banishedAny) {
+                                // Clear old trail so loop doesn't double-trigger
+                                this.willo.trail = trail.slice(-4);
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // 2. Also check if 3+ awakened nodes form a Light Triangle enclosing any Shadow Wisp
+                const litNodes = this.nodes.filter(n => n.awakened && !n.shattered);
+                if (litNodes.length >= 3) {
+                    for (const shadow of this.shadows) {
+                        if (!shadow.banished && MathUtil.pointInPolygon(shadow.x, shadow.y, litNodes)) {
+                            this.banishShadow(shadow);
+                        }
+                    }
+                }
+            }
+
+            banishShadow(shadow) {
+                shadow.banished = true;
+                this.sound.playBanishShadow();
+                this.flow = Math.min(5.0, +(this.flow + 1.0).toFixed(1));
+                const bonus = Math.round(250 * this.flow);
+                this.addScore(bonus, shadow.x, shadow.y, `SHADOW BANISHED +${bonus}`);
+                this.shockwaves.push(new Shockwave(shadow.x, shadow.y, 260, '#c77dff', 380));
+                this.shockwaves.push(new Shockwave(shadow.x, shadow.y, 180, '#5efce8', 290));
+                this.spawnBurst(shadow.x, shadow.y, '#c77dff', 34, 280);
+                this.spawnBurst(shadow.x, shadow.y, '#5efce8', 20, 210);
+                this.triggerShake(8, 0.25);
+                this.updateHUD();
+            }
+
+            checkGroveCompletion() {
+                const allLit = this.nodes.every(n => n.awakened);
+                if (allLit && this.state === 'PLAYING') {
+                    this.state = 'TRANSITION';
+                    this.willo.tetheredNode = null;
+                    this.sound.playGroveClear();
+
+                    // Banish any remaining shadow wisps in a celebratory wave
+                    this.shadows.forEach(s => {
+                        if (!s.banished) {
+                            s.banished = true;
+                            this.spawnBurst(s.x, s.y, '#5efce8', 20, 220);
+                        }
+                    });
+
+                    const clearBonus = 300 * this.grove;
+                    this.addScore(clearBonus, this.willo.x, this.willo.y - 30, `GROVE AWAKENED +${clearBonus}`);
+                    this.shockwaves.push(new Shockwave(this.willo.x, this.willo.y, Math.max(this.width, this.height), '#ffd166', 540));
+
+                    setTimeout(() => {
+                        this.state = 'PLAYING';
+                        this.loadGrove(this.grove + 1);
+                    }, 1800);
+                }
+            }
+
+            addScore(points, x, y, label) {
+                this.score += points;
+                if (label) {
+                    this.floatingTexts.push(new FloatingText(x, y, label, '#ffd166'));
+                }
+                this.updateHUD();
+            }
+
+            updateHUD() {
+                const litCount = this.nodes.filter(n => n.awakened).length;
+                document.getElementById('hudGrove').textContent = this.grove;
+                document.getElementById('hudNodes').textContent = `${litCount} / ${this.nodes.length}`;
+                document.getElementById('hudScore').textContent = this.score.toLocaleString();
+                document.getElementById('hudFlow').textContent = `${this.flow.toFixed(1)}x`;
+            }
+
+            spawnBurst(x, y, color, count, maxSpeed) {
+                for (let i = 0; i < count; i++) {
+                    const ang = Math.random() * Math.PI * 2;
+                    const spd = MathUtil.rand(maxSpeed * 0.2, maxSpeed);
+                    this.particles.push(new Particle(
+                        x, y,
+                        Math.cos(ang) * spd,
+                        Math.sin(ang) * spd,
+                        color,
+                        MathUtil.rand(1.8, 4.2),
+                        MathUtil.rand(0.45, 0.95)
+                    ));
+                }
+            }
+
+            triggerShake(intensity, duration) {
+                this.shakeIntensity = intensity;
+                this.shakeTime = duration;
+            }
+
+            // ==========================================
+            // 5. SIMULATION UPDATE LOOP
+            // ==========================================
+            update(dt) {
+                this.time += dt;
+
+                if (this.shakeTime > 0) {
+                    this.shakeTime -= dt;
+                }
+
+                // Update ambient fireflies
+                this.bgFireflies.forEach(f => {
+                    f.x += f.vx * dt;
+                    f.y += f.vy * dt;
+                    f.phase += dt * 2.2;
+                    if (f.y < -10) f.y = this.height + 10;
+                    if (f.x < -10) f.x = this.width + 10;
+                    if (f.x > this.width + 10) f.x = -10;
+                });
+
+                // Menu background gentle orbit animation
+                if (this.state === 'MENU') {
+                    const cx = this.width * 0.5;
+                    const cy = this.height * 0.52;
+                    this.willo.x = cx + Math.cos(this.time * 0.9) * 160;
+                    this.willo.y = cy + Math.sin(this.time * 1.3) * 85;
+                    this.recordTrail();
+                    this.nodes.forEach(n => n.update(dt, this.time));
+                    this.updateVisualFX(dt);
+                    return;
+                }
+
+                // Timers
+                if (this.willo.invulnTimer > 0) this.willo.invulnTimer -= dt;
+                if (this.willo.boostTimer > 0) this.willo.boostTimer -= dt;
+
+                // Update Nodes
+                this.nodes.forEach(node => node.update(dt, this.time));
+
+                // Update Wind Currents
+                this.winds.forEach(w => {
+                    w.update(dt);
+                    if (this.willo.x > w.x && this.willo.x < w.x + w.w &&
+                        this.willo.y > w.y && this.willo.y < w.y + w.h) {
+                        this.willo.vx += w.fx * dt;
+                        this.willo.vy += w.fy * dt;
+                    }
+                });
+
+                // Willo Physics: Tethered Orbit vs Free Glide
+                const tethered = this.willo.tetheredNode;
+                if (tethered && !tethered.shattered) {
+                    const dx = this.willo.x - tethered.x;
+                    const dy = this.willo.y - tethered.y;
+                    const dist = Math.hypot(dx, dy) || 1;
+
+                    // Gently reel in slightly to tight orbit radius
+                    this.willo.orbitRadius = MathUtil.lerp(this.willo.orbitRadius, Math.min(115, Math.max(58, this.willo.orbitRadius)), dt * 3);
+
+                    // Angular acceleration while tethered
+                    const radialX = dx / dist;
+                    const radialY = dy / dist;
+                    const tangentX = -radialY * this.willo.orbitDir;
+                    const tangentY = radialX * this.willo.orbitDir;
+
+                    // Accelerate rotational speed up to a thrilling cap
+                    let speed = Math.hypot(this.willo.vx, this.willo.vy);
+                    speed = Math.min(620, speed + 240 * dt);
+
+                    this.willo.vx = tangentX * speed;
+                    this.willo.vy = tangentY * speed;
+
+                    // Integrate position & constrain to orbit radius
+                    this.willo.x += this.willo.vx * dt;
+                    this.willo.y += this.willo.vy * dt;
+
+                    const newDx = this.willo.x - tethered.x;
+                    const newDy = this.willo.y - tethered.y;
+                    const newDist = Math.hypot(newDx, newDy) || 1;
+                    this.willo.x = tethered.x + (newDx / newDist) * this.willo.orbitRadius;
+                    this.willo.y = tethered.y + (newDy / newDist) * this.willo.orbitRadius;
+
+                    // Charge the Lantern Node!
+                    if (!tethered.awakened) {
+                        tethered.charge += dt * 1.15;
+                        if (Math.random() < 0.45) {
+                            this.particles.push(new Particle(
+                                this.willo.x, this.willo.y,
+                                (tethered.x - this.willo.x) * 2.5,
+                                (tethered.y - this.willo.y) * 2.5,
+                                '#ffd166', 2.2, 0.35
+                            ));
+                        }
+                        if (tethered.charge >= 1) {
+                            this.awakenNode(tethered);
+                        }
+                    }
+                } else {
+                    this.willo.tetheredNode = null;
+
+                    // Keyboard directional input
+                    let kx = 0, ky = 0;
+                    if (this.keys['ArrowLeft'] || this.keys['KeyA']) kx -= 1;
+                    if (this.keys['ArrowRight'] || this.keys['KeyD']) kx += 1;
+                    if (this.keys['ArrowUp'] || this.keys['KeyW']) ky -= 1;
+                    if (this.keys['ArrowDown'] || this.keys['KeyS']) ky += 1;
+
+                    if (kx !== 0 || ky !== 0) {
+                        const kLen = Math.hypot(kx, ky);
+                        const accel = 720;
+                        this.willo.vx += (kx / kLen) * accel * dt;
+                        this.willo.vy += (ky / kLen) * accel * dt;
+                    } else if (this.pointer.active && this.willo.boostTimer <= 0.15) {
+                        // Gentle magnetic glide toward pointer when not boosting
+                        const dx = this.pointer.x - this.willo.x;
+                        const dy = this.pointer.y - this.willo.y;
+                        const d = Math.hypot(dx, dy);
+                        if (d > 14) {
+                            const pull = Math.min(540, d * 2.8);
+                            this.willo.vx += (dx / d) * pull * dt * 2.1;
+                            this.willo.vy += (dy / d) * pull * dt * 2.1;
+                        }
+                    }
+
+                    // Fluid air drag
+                    const drag = this.willo.boostTimer > 0 ? 0.985 : 0.945;
+                    this.willo.vx *= Math.pow(drag, dt * 60);
+                    this.willo.vy *= Math.pow(drag, dt * 60);
+
+                    this.willo.x += this.willo.vx * dt;
+                    this.willo.y += this.willo.vy * dt;
+                }
+
+                // Soft screen boundary cushion
+                const pad = 22;
+                if (this.willo.x < pad) { this.willo.x = pad; this.willo.vx = Math.abs(this.willo.vx) * 0.7; }
+                if (this.willo.x > this.width - pad) { this.willo.x = this.width - pad; this.willo.vx = -Math.abs(this.willo.vx) * 0.7; }
+                if (this.willo.y < pad) { this.willo.y = pad; this.willo.vy = Math.abs(this.willo.vy) * 0.7; }
+                if (this.willo.y > this.height - pad) { this.willo.y = this.height - pad; this.willo.vy = -Math.abs(this.willo.vy) * 0.7; }
+
+                // Record ribbon trail & check if Willo wove a loop around a shadow wisp
+                this.recordTrail();
+                if (this.state === 'PLAYING') {
+                    this.checkLightWeaveCapture();
+                }
+
+                // Update Shadow Wisps & collision
+                for (const shadow of this.shadows) {
+                    if (shadow.banished) continue;
+                    shadow.update(dt, this.willo);
+
+                    const d = MathUtil.dist(this.willo.x, this.willo.y, shadow.x, shadow.y);
+                    if (d < this.willo.radius + shadow.radius * 0.75) {
+                        // If Willo is slingshot-boosting at high speed, Willo pierces and banishes the Shadow Wisp!
+                        if (this.willo.boostTimer > 0) {
+                            this.banishShadow(shadow);
+                        } else if (this.willo.invulnTimer <= 0 && this.state === 'PLAYING') {
+                            // Knockback & Flow reset
+                            this.willo.invulnTimer = 1.2;
+                            this.willo.tetheredNode = null;
+                            this.flow = 1.0;
+                            this.updateHUD();
+                            this.sound.playShadowHit();
+                            this.triggerShake(9, 0.25);
+
+                            const pushAng = Math.atan2(this.willo.y - shadow.y, this.willo.x - shadow.x);
+                            this.willo.vx = Math.cos(pushAng) * 340;
+                            this.willo.vy = Math.sin(pushAng) * 340;
+                            this.spawnBurst(this.willo.x, this.willo.y, '#ff4d6d', 18, 200);
+                            this.floatingTexts.push(new FloatingText(this.willo.x, this.willo.y - 18, 'FLOW RESET', '#ff758f'));
+                        }
+                    }
+                }
+
+                this.updateVisualFX(dt);
+            }
+
+            recordTrail() {
+                const trail = this.willo.trail;
+                const last = trail[trail.length - 1];
+                if (!last || MathUtil.dist(this.willo.x, this.willo.y, last.x, last.y) > 6) {
+                    trail.push({ x: this.willo.x, y: this.willo.y, age: 0 });
+                }
+                for (let i = trail.length - 1; i >= 0; i--) {
+                    trail[i].age += 0.016;
+                    if (trail[i].age > 0.75 || trail.length > 48) {
+                        trail.splice(i, 1);
+                    }
+                }
+            }
+
+            updateVisualFX(dt) {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    this.particles[i].update(dt);
+                    if (this.particles[i].life <= 0) this.particles.splice(i, 1);
+                }
+                for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+                    this.shockwaves[i].update(dt);
+                    if (this.shockwaves[i].alpha <= 0) this.shockwaves.splice(i, 1);
+                }
+                for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+                    this.floatingTexts[i].update(dt);
+                    if (this.floatingTexts[i].life <= 0) this.floatingTexts.splice(i, 1);
+                }
+            }
+
+            // ==========================================
+            // 6. RENDERING PIPELINE
+            // ==========================================
+            draw() {
+                const ctx = this.ctx;
+                ctx.save();
+
+                // Screen shake offset
+                if (this.shakeTime > 0) {
+                    const sx = MathUtil.rand(-this.shakeIntensity, this.shakeIntensity);
+                    const sy = MathUtil.rand(-this.shakeIntensity, this.shakeIntensity);
+                    ctx.translate(sx, sy);
+                }
+
+                // 1. Deep Twilight Forest Gradient Sky
+                const bgGrad = ctx.createLinearGradient(0, 0, 0, this.height);
+                bgGrad.addColorStop(0, '#050914');
+                bgGrad.addColorStop(0.55, '#0b192c');
+                bgGrad.addColorStop(1, '#092230');
+                ctx.fillStyle = bgGrad;
+                ctx.fillRect(0, 0, this.width, this.height);
+
+                // Subtle Moon / Forest Canopy Aura
+                const moonGrad = ctx.createRadialGradient(this.width * 0.5, this.height * 0.18, 10, this.width * 0.5, this.height * 0.18, this.width * 0.55);
+                moonGrad.addColorStop(0, 'rgba(94, 252, 232, 0.09)');
+                moonGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = moonGrad;
+                ctx.fillRect(0, 0, this.width, this.height);
+
+                // 2. Parallax Ancient Tree Silhouettes
+                const camOffsetX = (this.willo.x - this.width * 0.5) * -0.06;
+                this.trees.forEach(t => {
+                    const sway = Math.sin(this.time * 0.6 + t.swayPhase) * 14;
+                    const baseX = t.x + camOffsetX * t.parallax;
+                    ctx.fillStyle = t.color;
+                    ctx.beginPath();
+                    ctx.moveTo(baseX - t.width * 0.6, this.height);
+                    ctx.quadraticCurveTo(baseX - t.width * 0.25 + sway * 0.4, this.height * 0.5, baseX - t.width * 0.18 + t.curve + sway, 0);
+                    ctx.lineTo(baseX + t.width * 0.18 + t.curve + sway, 0);
+                    ctx.quadraticCurveTo(baseX + t.width * 0.25 + sway * 0.4, this.height * 0.5, baseX + t.width * 0.6, this.height);
+                    ctx.closePath();
+                    ctx.fill();
+                });
+
+                // 3. Ambient Fireflies
+                this.bgFireflies.forEach(f => {
+                    const alpha = 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(f.phase));
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = f.color;
+                    ctx.beginPath();
+                    ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                });
+
+                // 4. Wind Currents
+                this.winds.forEach(w => w.draw(ctx));
+
+                // 5. Constellation Lines connecting Awakened Lanterns
+                const litNodes = this.nodes.filter(n => n.awakened && !n.shattered);
+                if (litNodes.length >= 2) {
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    ctx.strokeStyle = 'rgba(255, 209, 102, 0.26)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    litNodes.forEach((n, idx) => {
+                        if (idx === 0) ctx.moveTo(n.x, n.y);
+                        else ctx.lineTo(n.x, n.y);
+                    });
+                    if (litNodes.length >= 3) ctx.closePath();
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // 6. Lantern Nodes
+                const candidate = this.state === 'PLAYING' && !this.willo.tetheredNode
+                    ? this.findNearestTetherCandidate()
+                    : null;
+
+                this.nodes.forEach(node => {
+                    node.draw(ctx, this.willo.tetheredNode === node, candidate === node);
+                });
+
+                // 7. Tether Light Beam (when Willo is tethered to a Lantern)
+                if (this.willo.tetheredNode && !this.willo.tetheredNode.shattered) {
+                    const target = this.willo.tetheredNode;
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+                    const beamGrad = ctx.createLinearGradient(this.willo.x, this.willo.y, target.x, target.y);
+                    beamGrad.addColorStop(0, '#5efce8');
+                    beamGrad.addColorStop(1, '#ffd166');
+
+                    ctx.strokeStyle = beamGrad;
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    ctx.moveTo(this.willo.x, this.willo.y);
+                    ctx.lineTo(target.x, target.y);
+                    ctx.stroke();
+
+                    // Secondary harmonic wave along tether
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    const steps = 12;
+                    for (let i = 0; i <= steps; i++) {
+                        const t = i / steps;
+                        const bx = MathUtil.lerp(this.willo.x, target.x, t);
+                        const by = MathUtil.lerp(this.willo.y, target.y, t);
+                        const perpX = -(target.y - this.willo.y) * 0.04 * Math.sin(t * Math.PI * 3 + this.time * 18);
+                        const perpY = (target.x - this.willo.x) * 0.04 * Math.sin(t * Math.PI * 3 + this.time * 18);
+                        if (i === 0) ctx.moveTo(bx, by);
+                        else ctx.lineTo(bx + perpX, by + perpY);
+                    }
+                    ctx.stroke();
+                    ctx.restore();
+                } else if (candidate) {
+                    // Subtle aiming filament to nearest tetherable node
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(94, 252, 232, 0.25)';
+                    ctx.lineWidth = 1.2;
+                    ctx.setLineDash([4, 6]);
+                    ctx.beginPath();
+                    ctx.moveTo(this.willo.x, this.willo.y);
+                    ctx.lineTo(candidate.x, candidate.y);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // 8. Shadow Wisps
+                this.shadows.forEach(s => s.draw(ctx));
+
+                // 9. Additive Glow Layer: Willo Ribbon Trail, Particles & Shockwaves
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+
+                // Willo Ribbon Trail
+                if (this.willo.trail.length > 1) {
+                    for (let i = 1; i < this.willo.trail.length; i++) {
+                        const p0 = this.willo.trail[i - 1];
+                        const p1 = this.willo.trail[i];
+                        const ratio = i / this.willo.trail.length;
+                        ctx.strokeStyle = this.willo.boostTimer > 0
+                            ? `rgba(255, 209, 102, ${ratio * 0.75})`
+                            : `rgba(94, 252, 232, ${ratio * 0.65})`;
+                        ctx.lineWidth = ratio * 9;
+                        ctx.lineCap = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(p0.x, p0.y);
+                        ctx.lineTo(p1.x, p1.y);
+                        ctx.stroke();
+                    }
+                }
+
+                // Particles & Shockwaves
+                this.particles.forEach(p => p.draw(ctx));
+                this.shockwaves.forEach(sw => sw.draw(ctx));
+
+                // Willo Bioluminescent Spirit Body
+                const blink = this.willo.invulnTimer > 0 && Math.floor(this.time * 16) % 2 === 0;
+                if (!blink) {
+                    const haloRadius = this.willo.boostTimer > 0 ? 46 : 34;
+                    const willoGrad = ctx.createRadialGradient(this.willo.x, this.willo.y, 1, this.willo.x, this.willo.y, haloRadius);
+                    willoGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+                    willoGrad.addColorStop(0.3, this.willo.boostTimer > 0 ? 'rgba(255, 209, 102, 0.75)' : 'rgba(94, 252, 232, 0.7)');
+                    willoGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+                    ctx.fillStyle = willoGrad;
+                    ctx.beginPath();
+                    ctx.arc(this.willo.x, this.willo.y, haloRadius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Inner spirit core
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(this.willo.x, this.willo.y, 6.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.restore();
+
+                // 10. Floating Score Popups
+                this.floatingTexts.forEach(ft => ft.draw(ctx));
+
+                ctx.restore();
+            }
+        }
+
+        // ==========================================
+        // 7. BOOTSTRAP ON WINDOW LOAD
+        // ==========================================
+        window.onload = function () {
+            const game = new WilloGame();
+            let lastTime = performance.now();
+
+            function gameLoop(now) {
+                const dt = Math.min(0.05, (now - lastTime) / 1000);
+                lastTime = now;
+
+                game.update(dt);
+                game.draw();
+
+                requestAnimationFrame(gameLoop);
+            }
+
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
