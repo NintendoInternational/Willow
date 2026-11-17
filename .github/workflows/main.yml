@@ -36,9 +36,9 @@ jobs:
 
       - name: Generate Keystore and Build Signed AAB
         run: |
-          keytool -genkey -v -keystore release.keystore -alias gamekey -keyalg RSA -keysize 2048 -validity 10000 -storepass android123 -keypass android123 -dname "CN=GameDev, OU=Dev, O=Game, L=City, S=State, C=US"
+          keytool -genkey -v -keystore "${{ github.workspace }}/release.keystore" -alias gamekey -keyalg RSA -keysize 2048 -validity 10000 -storepass android123 -keypass android123 -dname "CN=GameDev, OU=Dev, O=Game, L=City, S=State, C=US"
           cd android
-          ./gradlew bundleRelease -Pandroid.injected.signing.store.file=../release.keystore -Pandroid.injected.signing.store.password=android123 -Pandroid.injected.signing.key.alias=gamekey -Pandroid.injected.signing.key.password=android123
+          ./gradlew bundleRelease -Pandroid.injected.signing.store.file="${{ github.workspace }}/release.keystore" -Pandroid.injected.signing.store.password=android123 -Pandroid.injected.signing.key.alias=gamekey -Pandroid.injected.signing.key.password=android123
 
       - name: Upload AAB and Keystore
         uses: actions/upload-artifact@v4
