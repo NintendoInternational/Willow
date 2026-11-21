@@ -16,13 +16,6 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Setup Java 21
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-          cache: 'gradle' # Enables caching for Gradle dependencies to prevent 429 rate-limit issues
-
       - name: Prepare web folder
         run: |
           mkdir -p www
@@ -34,6 +27,13 @@ jobs:
           npm install @capacitor/core @capacitor/cli @capacitor/android
           npx cap init "MyHTMLGame" "com.example.myhtmlgame" --web-dir=www
           npx cap add android
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle' # Now the android folder and gradle files exist, so caching will work correctly
 
       - name: Make Gradle wrapper executable
         run: |
